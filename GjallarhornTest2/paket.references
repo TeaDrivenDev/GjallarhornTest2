@@ -1,0 +1,4 @@
+group Main
+    FSharp.Core
+    FsXaml.Wpf
+    Gjallarhorn.Bindable.Wpf
