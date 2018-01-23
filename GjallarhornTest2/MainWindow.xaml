@@ -9,16 +9,17 @@
         d:DataContext="{x:Static model:Program.d}"
         SizeToContent="WidthAndHeight"
         mc:Ignorable="d">
-    <Grid Margin="0,10,0,0">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-        <TextBox Grid.Row="0"
-                 Margin="10"
+    <StackPanel Margin="0,10,0,0">
+        <TextBox Margin="5"
                  Text="{Binding Original, UpdateSourceTrigger=PropertyChanged}" />
-        <TextBlock Grid.Row="1"
-                   Margin="10"
-                   Text="{Binding Reverse, StringFormat=Grr: {0}, Mode=OneWay}" />
-    </Grid>
+        <TextBlock Margin="5"
+                   Text="{Binding Reverse, StringFormat=Reversed: {0}, Mode=OneWay}" />
+        <Button Margin="5"
+                Command="{Binding Add}"
+                Content="Add" />
+        <ListView MinHeight="100"
+                  Margin="5"
+                  Background="Beige"
+                  ItemsSource="{Binding Items}" />
+    </StackPanel>
 </Window>
