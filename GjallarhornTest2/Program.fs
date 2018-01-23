@@ -13,56 +13,81 @@ type MainWindow = XAML<"MainWindow.xaml">
 
 module Program =
 
-    let reverse (s : string) = s |> Seq.rev |> String.Concat
+    let names =
+        [
+           "Alpheratz"
+           "Ankaa"
+           "Schedar"
+           "Diphda"
+           "Achernar"
+           "Hamal"
+           "Acamar"
+           "Menkar"
+           "Mirfac"
+           "Aldebaran"
+           "Rigel"
+           "Capella"
+           "Bellatrix"
+           "Elnath"
+           "Alnilam"
+           "Betelgeuse"
+           "Canopus"
+           "Sirius"
+           "Adhara"
+           "Procyon"
+           "Pollux"
+           "Avior"
+        ]
 
     type Msg =
-        | Input of string
         | Add of string
 
     type Thing =
         {
-            Input : string
-            Items : string list
+            Source : string list
+            Target : string list
         }
     with
-        static member Default = { Input = ""; Items = [] }
+        static member Default = { Source = names; Target = [] }
     
     let update msg (thing : Thing) =
         match msg with
-        | Input input -> { thing with Input = input }
-        | Add item -> { thing with Input = ""; Items = item :: thing.Items }
+        | Add item ->
+            if thing.Target |> List.contains item
+            then thing
+            else { thing with Target = (item :: thing.Target) |> List.sort }
+
+    
+    type ItemViewModel =
+        {
+            Name : string
+            Self : ISignal<string>
+        }
+
 
     [<CLIMutable>]
     type ViewModel =
         {
-            Original : string
-            Reverse : string
+            Source : string list
             Add : VmCmd<string>
-            Items : string list
+            Target : string list
         }
 
-    let d = { Original = ""; Reverse = ""; Add = Vm.cmd ""; Items = [] }
+    let d = { Source = []; Add = Vm.cmd ""; Target = [] }
 
-    
     let bindToSource _nav source (model : ISignal<Thing>) : IObservable<Msg> list =
-        let input =
-            model
-            |> Signal.map (fun m -> m.Input)
-            |> Bind.Explicit.twoWay source (nameof <@ d.Original @>)
+        model
+        |> Signal.map (fun m -> m.Source)
+        |> Bind.Explicit.oneWay source (nameof <@ d.Source @>)
 
         model
-        |> Signal.map (fun m -> reverse m.Input)
-        |> Bind.Explicit.oneWay source (nameof <@ d.Reverse @>)
+        |> Signal.map (fun m -> m.Target)
+        |> Bind.Explicit.oneWay source (nameof <@ d.Target @>)
 
-        model
-        |> Signal.map (fun m -> m.Items)
-        |> Bind.Explicit.oneWay source (nameof <@ d.Items @>)
-
-        let add = Bind.Explicit.createCommand (nameof <@ d.Add @>) source
+        let add = Bind.Explicit.createCommandParam (nameof <@ d.Add @>) source
 
         [
-            Signal.map id input |> Observable.map Input
-            add |> Observable.map (fun _ -> model.Value.Input |> reverse |> Add)
+            add |> Observable.map Add
         ]
 
     let applicationCore = Framework.application Thing.Default update (Component.fromExplicit bindToSource) Nav.empty
