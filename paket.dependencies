@@ -5,6 +5,9 @@ nuget FSharp.Core
 nuget FsXaml.Wpf
 nuget Gjallarhorn.Bindable.Wpf prerelease
 
+github TeaDrivenDev/TeaDriven.NightSky
+
+
 group Build
 source https://www.nuget.org/api/v2
 
