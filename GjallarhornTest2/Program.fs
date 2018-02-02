@@ -38,46 +38,42 @@ module Program =
            "Avior"
         ]
     
-    type ItemMessage = UpdateItem
-
-    [<CLIMutable>]
     type Item =
         {
             Name : string
             Top : float
             Left : float
+            Id : Guid // Used for identity later
         }
 
-    let createItem name = { Name = name; Top = 200.; Left = 200. }
+    let createItem name = { Name = name; Top = 200.; Left = 200. ; Id = Guid.NewGuid() }
+
+    type ItemMessage = 
+        | ChangeLeft of float
+        | ChangeTop of float
+    
+    let updateItem msg (item : Item) =
+        match msg with
+        | ChangeLeft left -> { item with Left = left }
+        | ChangeTop top -> { item with Top = top }
 
     [<CLIMutable>]
     type ItemViewModel =
         {
-            XName : string
+            Name : string
             Top : float
-            Left : float
-            Self : ISignal<Item>
+            Left : float            
         }
+    let itemd = { Name = ""; Top = 0.; Left = 0. }
 
-    let designSignal = createItem "" |> Signal.constant
-    let itemd = { XName = ""; Top = 0.; Left = 0.; Self = designSignal }
 
     let itemComponent =
-        let update msg itemModel =
-            match msg with
-            | UpdateItem -> itemModel
-
-        Component.create<Item, unit, _>
+        Component.create<Item, unit, ItemMessage>
             [
-                <@ itemd.XName @> |> Bind.oneWay (fun item -> item.Name)
-                <@ itemd.Top @> |> Bind.oneWay (fun item -> item.Top)
-                <@ itemd.Left @> |> Bind.oneWay (fun item -> item.Left)
-                <@ itemd.Self @> |> Bind.self
-            ]
-        |> Component.toSelfUpdating update
-
-    type ModelMessage =
-        | Add of string
+                <@ itemd.Name @> |> Bind.oneWay (fun item -> item.Name) 
+                <@ itemd.Top @> |> Bind.twoWay (fun item -> item.Top) ChangeTop
+                <@ itemd.Left @> |> Bind.twoWay (fun item -> item.Left) ChangeLeft
+            ]        
 
     type Model =
         {
@@ -87,7 +83,22 @@ module Program =
     with
         static member Default = { Source = names; Target = [] }
 
+    type ModelMessage =
+        | Add of string
+        | ChangeItem of ItemMessage * Item
+
+
     let updateModel msg (model : Model) =
+        
+        // Using the Id to find/replace items instead of equality since more than one update 
+        // happens in one pass (single dispatcher operation), without an update between
+        let get item model = 
+            model 
+            |> List.find (fun i -> i.Id = item.Id)
+        let replace old repl model = 
+            model 
+            |> List.map (fun i -> if i.Id <> old.Id then i else repl)
+
         match msg with
         | Add name ->
             if model.Target |> List.exists (fun item -> item.Name = name)
@@ -95,33 +106,47 @@ module Program =
             else
                 { model with
                     Target = (createItem name :: model.Target) |> List.sort }
+        | ChangeItem (imsg,item) ->
+            let orig = get item model.Target
+            let updated = orig |> updateItem imsg 
+            { model with 
+                Target = replace orig updated model.Target }
 
     [<CLIMutable>]
     type ViewModel =
         {
-            XSource : string list
-            Add : VmCmd<string>
-            XTarget : ItemViewModel list
+            Source : string list
+            Add : VmCmd<ModelMessage> // This should be the type of command you generate, not the param coming from XAML
+            Target : Item list
         }
 
-    let d = { XSource = []; Add = Vm.cmd ""; XTarget = [] }
+    let d = { Source = []; Add = Vm.cmd (Add ""); Target = [] }
 
-    let bindToSource _nav source (model : ISignal<Model>) : IObservable<ModelMessage> list =
-        model
-        |> Signal.map (fun m -> m.Source)
-        |> Bind.Explicit.oneWay source (nameof <@ d.XSource @>)
+    // This can be implicit - see below - if you prefer explicit, this will still work
 
-        model
-        |> Signal.map (fun m -> m.Target)
-        |> Bind.Explicit.oneWay source (nameof <@ d.XTarget @>)
+    //let bindToSource (_nav : Dispatch<unit>) source (model : ISignal<Model>) : IObservable<ModelMessage> list =
+    //    model
+    //    |> Signal.map (fun m -> m.Source)
+    //    |> Bind.Explicit.oneWay source (nameof <@ d.Source @>)
 
-        let add = Bind.Explicit.createCommandParam (nameof <@ d.Add @>) source
+    //    let t = model |> Signal.map (fun m -> m.Target)
+    //    let updateItem = Gjallarhorn.Bindable.Bind.Collections.oneWay source (nameof <@ d.Target @>) _nav t itemComponent
 
-        [
-            add |> Observable.map Add
+    //    let add = Bind.Explicit.createCommandParam (nameof <@ d.Add @>) source
+
+    //    [
+    //        add |> Observable.map Add
+    //        updateItem |> Observable.map ChangeItem
+    //    ]
+
+    let bindToSource  =
+        Component.create<Model, _, ModelMessage> [
+            <@ d.Source @> |> Bind.oneWay (fun m -> m.Source)
+            <@ d.Target @> |> Bind.collection (fun m -> m.Target) itemComponent ChangeItem
+            <@ d.Add @>    |> Bind.cmdParam ModelMessage.Add
         ]
 
-    let applicationCore = Framework.application Model.Default updateModel (Component.fromExplicit bindToSource) Nav.empty
+    let applicationCore = Framework.application Model.Default updateModel bindToSource (fun _ _ -> ()) // Needed to change nav here - with singleViewFromWindow, empty wasn't working
 
     [<STAThread>]
     [<EntryPoint>]

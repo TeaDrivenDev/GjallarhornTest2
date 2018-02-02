@@ -13,7 +13,7 @@
     <Grid>
         <nightsky:CanvasItemsControl x:Name="Sky"
                                      Background="Black"
-                                     ItemsSource="{Binding XTarget}">
+                                     ItemsSource="{Binding Target}">
             <nightsky:CanvasItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Grid>
@@ -28,7 +28,7 @@
                                    FontSize="12"
                                    Foreground="White"
                                    IsHitTestVisible="False"
-                                   Text="{Binding XName}" />
+                                   Text="{Binding Name}" />
                     </Grid>
                 </DataTemplate>
             </nightsky:CanvasItemsControl.ItemTemplate>
@@ -45,7 +45,7 @@
                       HorizontalAlignment="Stretch"
                       VerticalAlignment="Stretch"
                       Background="Beige"
-                      ItemsSource="{Binding XSource}" />
+                      ItemsSource="{Binding Source}" />
             <Button Grid.Row="1"
                     Margin="5"
                     Padding="10"
